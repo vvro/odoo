@@ -88,6 +88,7 @@ const Wysiwyg = Widget.extend({
         this.colorpickers = {};
         this._onDocumentMousedown = this._onDocumentMousedown.bind(this);
         this._onBlur = this._onBlur.bind(this);
+        this._onScroll = this._onScroll.bind(this);
         this.customizableLinksSelector = 'a'
             + ':not([data-bs-toggle="tab"])'
             + ':not([data-bs-toggle="collapse"])'
@@ -178,6 +179,12 @@ const Wysiwyg = Widget.extend({
             allowInlineAtRoot: this.options.allowInlineAtRoot,
             getYoutubeVideoElement: getYoutubeVideoElement,
             getContextFromParentRect: options.getContextFromParentRect,
+            getScrollContainerRect: () => {
+                if (!this.scrollContainer || !this.scrollContainer.getBoundingClientRect) {
+                    this.scrollContainer = document.querySelector('.o_action_manager');
+                }
+                return this.scrollContainer.getBoundingClientRect();
+            },
             getPowerboxElement: () => {
                 const selection = (this.options.document || document).getSelection();
                 if (selection.isCollapsed && selection.rangeCount) {
@@ -300,7 +307,21 @@ const Wysiwyg = Widget.extend({
         this.$editable.on('click', '.o_image, .media_iframe_video', e => e.preventDefault());
         this.showTooltip = true;
         this.$editable.on('dblclick', mediaSelector, function () {
-            if (this.isContentEditable || (this.parentElement && this.parentElement.isContentEditable)) {
+            let isEditable =
+                // TODO that first check is probably useless/wrong: checking if
+                // the media itself has editable content should not be relevant.
+                // In fact the content of all media should be marked as non
+                // editable anyway.
+                this.isContentEditable ||
+                // For a media to be editable, the base case is to be in a
+                // container whose content is editable.
+                (this.parentElement && this.parentElement.isContentEditable);
+
+            if (!isEditable && this.classList.contains('o_editable_media')) {
+                isEditable = weUtils.shouldEditableMediaBeEditable(this);
+            }
+
+            if (isEditable) {
                 self.showTooltip = false;
 
                 const selection = self.odooEditor.document.getSelection();
@@ -742,6 +763,7 @@ const Wysiwyg = Widget.extend({
             clearTimeout(timeout);
         }
         snippetsOptions.clearM2oRpcCache();
+        document.removeEventListener('scroll', this._onScroll, true);
         this._super();
     },
     /**
@@ -1249,6 +1271,7 @@ const Wysiwyg = Widget.extend({
             }, this.$editable[0], {
                 needLabel: true
             }, undefined, link);
+            this._shouldDelayBlur = true;
             linkDialog.open();
             linkDialog.on('save', this, data => {
                 if (!data) {
@@ -1617,18 +1640,10 @@ const Wysiwyg = Widget.extend({
         if ($colorpickerGroup.length) {
             this._createPalette();
         }
-        // we need the Timeout to be sure the editable content is loaded
-        // before calculating the scrollParent() element.
-        setTimeout(() => {
-            const scrollableContainer = this.$el.scrollParent();
-            if (!options.snippets && scrollableContainer.length) {
-                this.odooEditor.addDomListener(
-                    scrollableContainer[0],
-                    'scroll',
-                    this.odooEditor.updateToolbarPosition.bind(this.odooEditor),
-                );
-            }
-        }, 0);
+        if (!options.snippets) {
+            // Scroll event does not bubble.
+            document.addEventListener('scroll', this._onScroll, true);
+        }
     },
     /**
      * @private
@@ -1939,13 +1954,13 @@ const Wysiwyg = Widget.extend({
                 if (!this.showTooltip || $target.attr('title') !== undefined) {
                     return;
                 }
-                this.odooEditor.observerUnactive();
                 // Tooltips need to be cleared before leaving the editor.
                 this.saving_mutex.exec(() => {
+                    this.odooEditor.observerUnactive();
                     $target.tooltip({title: _t('Double-click to edit'), trigger: 'manual', container: 'body'}).tooltip('show');
+                    this.odooEditor.observerActive();
                     this.tooltipTimeouts.push(setTimeout(() => $target.tooltip('dispose'), 800));
                 });
-                this.odooEditor.observerActive();
             }, 400));
         }
         // Hide button groups that have no visible buttons.
@@ -2467,7 +2482,9 @@ const Wysiwyg = Widget.extend({
             this.$editable.find('.o_editable_date_field_linked').removeClass('o_editable_date_field_linked');
         }
         const closestDialog = e.target.closest('.o_dialog, .o_web_editor_dialog');
-        if (e.target.closest('.oe-toolbar') || e.target.closest('.o_we_crop_buttons') || (closestDialog && closestDialog.querySelector('.o_select_media_dialog, .o_link_dialog'))) {
+        if (
+            e.target.closest('.oe-toolbar,.oe-powerbox-wrapper,.o_we_crop_widget') ||
+            (closestDialog && closestDialog.querySelector('.o_select_media_dialog, .o_link_dialog'))) {
             this._shouldDelayBlur = true;
         } else {
             if (this._pendingBlur && !e.target.closest('.o_wysiwyg_wrapper')) {
@@ -2486,6 +2503,12 @@ const Wysiwyg = Widget.extend({
             // todo: to remove when removing the legacy field_html
             this.trigger_up('wysiwyg_blur');
             this.options.onWysiwygBlur && this.options.onWysiwygBlur();
+        }
+    },
+    _onScroll: function(ev) {
+        if (ev.target.contains(this.$editable[0])) {
+            this.scrollContainer = ev.target;
+            this.odooEditor.updateToolbarPosition();
         }
     },
     _signalOffline: function () {
@@ -2536,7 +2559,7 @@ const Wysiwyg = Widget.extend({
             this.preSavePromiseResolve();
             resetPreSavePromise();
         } catch (e) {
-            this.preSavePromiseReject(e);
+            this.preSavePromiseReject && this.preSavePromiseReject(e);
             resetPreSavePromise();
         }
     },

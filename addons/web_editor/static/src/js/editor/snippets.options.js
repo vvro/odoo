@@ -5456,7 +5456,9 @@ registry.ReplaceMedia = SnippetOptionWidget.extend({
                 this.$target[0].src = src;
             }
         } else {
-            parentEl.replaceWith(this.$target[0]);
+            const fragment = document.createDocumentFragment();
+            fragment.append(...parentEl.childNodes);
+            parentEl.replaceWith(fragment);
         }
     },
     /**
@@ -6987,6 +6989,11 @@ registry.BackgroundShape = SnippetOptionWidget.extend({
             this._lastShapePalette = palette;
             this._shapeBackgroundImagePerClass = {};
             for (const styleSheet of this.$target[0].ownerDocument.styleSheets) {
+                if (styleSheet.href && new URL(styleSheet.href).host !== location.host) {
+                    // In some browsers, if a stylesheet is loaded from a different domain
+                    // accessing cssRules results in a SecurityError.
+                    continue;
+                }
                 for (const rule of [...styleSheet.cssRules]) {
                     if (rule.selectorText && rule.selectorText.startsWith(".o_we_shape.")) {
                         this._shapeBackgroundImagePerClass[rule.selectorText] = rule.style.backgroundImage;

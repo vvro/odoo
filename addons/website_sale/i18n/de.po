@@ -226,7 +226,7 @@ msgid ""
 "                    Order Again"
 msgstr ""
 "<i class=\"fa fa-rotate-right me-1\"/>\n"
-"                    Nochmal bestellen"
+"                    Nochmal kaufen"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.product
@@ -280,8 +280,8 @@ msgid ""
 "contact us directly for this operation.</small>"
 msgstr ""
 "<small class=\"form-text text-muted\">Eine Änderung des Unternehmensnamens "
-"oder der MwSt-Nr. ist nicht mehr möglich, sobald Dokumente für Ihr Konto "
-"ausgestellt wurden. Bitte wenden Sie sich für diesen Vorgang direkt an "
+"oder der MwSt.-Nummer ist nicht mehr möglich, sobald Dokumente für Ihr Konto"
+" ausgestellt wurden. Bitte wenden Sie sich für diesen Vorgang direkt an "
 "uns.</small>"
 
 #. module: website_sale
@@ -426,7 +426,7 @@ msgid ""
 "<span>Next</span>\n"
 "                                            <i class=\"fa fa-chevron-right\"/>"
 msgstr ""
-"<span>Nächste</span>\n"
+"<span>Weiter</span>\n"
 "                                            <i class=\"fa fa-chevron-right\"/>"
 
 #. module: website_sale
@@ -1107,7 +1107,7 @@ msgstr "Karten"
 #: model:ir.model.fields.selection,name:website_sale.selection__website__product_page_image_layout__carousel
 #: model_terms:ir.ui.view,arch_db:website_sale.snippet_options
 msgid "Carousel"
-msgstr "Karrussel"
+msgstr "Karussell"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.snippet_options
@@ -1198,9 +1198,9 @@ msgid ""
 "Changing VAT number is not allowed once document(s) have been issued for "
 "your account. Please contact us directly for this operation."
 msgstr ""
-"Das Ändern der Umsatzsteuer-Identifikationsnummer ist nicht zulässig, sobald"
-" Dokumente für Ihr Konto ausgestellt wurden. Bitte kontaktieren Sie uns "
-"direkt für diesen Vorgang."
+"Das Ändern der MwSt.-Nummer ist nicht zulässig, sobald Dokumente für Ihr "
+"Konto ausgestellt wurden. Bitte kontaktieren Sie uns direkt für diesen "
+"Vorgang."
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.address
@@ -1659,7 +1659,7 @@ msgstr "Legt die Reihenfolge auf der E-Commerce-Website fest"
 #. module: website_sale
 #: model:ir.model,name:website_sale.model_digest_digest
 msgid "Digest"
-msgstr "Zusammenfassung"
+msgstr "Übersicht"
 
 #. module: website_sale
 #: model:ir.model.fields,field_description:website_sale.field_res_config_settings__module_website_sale_digital
@@ -2132,7 +2132,8 @@ msgstr ""
 #, python-format
 msgid "Invalid Email! Please enter a valid email address."
 msgstr ""
-"E-mail Addresse ungültig. Bitte geben Sie eine gültige E-mail Adresse ein."
+"Ungültige E-Mail-Adresse! Bitte geben Sie eine gültige E-mail E-Mail-"
+"Adresse."
 
 #. module: website_sale
 #. odoo-python
@@ -2778,7 +2779,7 @@ msgstr "Telefon"
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.snippet_options
 msgid "Pills"
-msgstr "Pillen"
+msgstr "Viereck"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.view_product_image_form
@@ -2952,7 +2953,7 @@ msgstr "Produktkategorie"
 #: model:ir.model.fields,field_description:website_sale.field_res_config_settings__module_website_sale_comparison
 #: model_terms:ir.ui.view,arch_db:website_sale.res_config_settings_view_form
 msgid "Product Comparison Tool"
-msgstr "Produktvergleichswerkzeug"
+msgstr "Produktvergleichstool"
 
 #. module: website_sale
 #: model:ir.model,name:website_sale.model_product_image
@@ -3333,7 +3334,7 @@ msgstr "Beschränken Sie die Veröffentlichung auf dieser Website."
 #: code:addons/website_sale/models/sale_order.py:0
 #, python-format
 msgid "Resume Order"
-msgstr "Bestellung zusammenfassen"
+msgstr "Bestellung fortsetzen"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.wizard_checkout
@@ -3708,7 +3709,7 @@ msgstr "Verkauft"
 #. module: website_sale
 #: model:product.ribbon,html:website_sale.sold_out_ribbon
 msgid "Sold out"
-msgstr "Vergriffen"
+msgstr "Ausverkauft"
 
 #. module: website_sale
 #. odoo-python
@@ -3766,7 +3767,7 @@ msgstr "Straße 2"
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.address
 msgid "Street <span class=\"d-none d-md-inline\"> and Number</span>"
-msgstr "Strasse <span class=\"d-none d-md-inline\"> und Hausnummer</span>"
+msgstr "Straße <span class=\"d-none d-md-inline\"> und Hausnummer</span>"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.snippet_options
@@ -3841,7 +3842,7 @@ msgstr "Text, der statt eines Preises angezeigt wird"
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.confirmation
 msgid "Thank you for your order."
-msgstr "Vielen Dank für Ihre Bestellung"
+msgstr "Vielen Dank für Ihre Bestellung!"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.brand_promotion
@@ -4138,7 +4139,7 @@ msgstr "Unbezahlt"
 #: model:ir.ui.menu,name:website_sale.menu_orders_unpaid_orders
 #, python-format
 msgid "Unpaid Orders"
-msgstr "Unbezahlte Bestellungen"
+msgstr "Unbezahlte Aufträge"
 
 #. module: website_sale
 #: model_terms:ir.ui.view,arch_db:website_sale.products_item
