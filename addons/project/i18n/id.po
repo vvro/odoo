@@ -1371,7 +1371,7 @@ msgstr "Tidak dapat menjumlah keseluruhan baris %r."
 #. module: project
 #: model:ir.model.fields,help:project.field_project_task__partner_is_company
 msgid "Check if the contact is a company, otherwise it is a person"
-msgstr ""
+msgstr "Periksa bila kontak merupakan perusahaan, bila tidak maka orang"
 
 #. module: project
 #: model:ir.model.fields,field_description:project.field_project_task__child_text
@@ -3122,7 +3122,7 @@ msgstr "Tinggalkan komentar"
 #: code:addons/project/static/src/js/tours/project.js:0
 #, python-format
 msgid "Let's create your first <b>stage</b>."
-msgstr ""
+msgstr "Mari membuat <b>tahap</b> pertama Anda."
 
 #. module: project
 #. odoo-javascript
@@ -3144,7 +3144,7 @@ msgstr "Ayo buat <b>task</b> pertama Anda."
 #: code:addons/project/static/src/js/tours/project.js:0
 #, python-format
 msgid "Let's create your second <b>stage</b>."
-msgstr ""
+msgstr "Mari membuat <b>tahap</b> kedua Anda."
 
 #. module: project
 #. odoo-javascript
@@ -4553,7 +4553,7 @@ msgstr "Pengulangan"
 #. module: project
 #: model:ir.model.fields,field_description:project.field_project_task__recurrence_update
 msgid "Recurrence Update"
-msgstr ""
+msgstr "Update Pengulangan"
 
 #. module: project
 #: model:ir.model.fields,field_description:project.field_project_task__recurring_task

@@ -1386,7 +1386,7 @@ msgstr ""
 #: code:addons/mail/models/res_partner.py:0
 #, python-format
 msgid "An email is required for find_or_create to work"
-msgstr ""
+msgstr "Email dibutuhkan agar for find_or_create dapat bekerja"
 
 #. module: mail
 #. odoo-javascript
@@ -5088,7 +5088,7 @@ msgstr ""
 #: code:addons/mail/static/src/components/call_action_list/call_action_list.xml:0
 #, python-format
 msgid "Join Video Call"
-msgstr ""
+msgstr "Masuk ke Video Call"
 
 #. module: mail
 #: model:ir.actions.act_window,name:mail.mail_channel_action_view
@@ -5579,7 +5579,7 @@ msgstr ""
 #. module: mail
 #: model:ir.model,name:mail.model_ir_mail_server
 msgid "Mail Server"
-msgstr ""
+msgstr "Email Server"
 
 #. module: mail
 #: model:ir.model.fields,field_description:mail.field_mail_composer_mixin__template_id
@@ -5768,7 +5768,7 @@ msgstr ""
 #. module: mail
 #: model:ir.model,name:mail.model_base_partner_merge_automatic_wizard
 msgid "Merge Partner Wizard"
-msgstr ""
+msgstr "Gabung Wizard Partner"
 
 #. module: mail
 #. odoo-python
@@ -7520,7 +7520,7 @@ msgstr ""
 #: code:addons/mail/static/src/components/message/message.js:0
 #, python-format
 msgid "Read More"
-msgstr ""
+msgstr "Lihat Lebih"
 
 #. module: mail
 #. odoo-javascript
@@ -7623,7 +7623,7 @@ msgstr "Rekam ID Thread"
 #: code:addons/mail/models/mail_message.py:0
 #, python-format
 msgid "Records:"
-msgstr ""
+msgstr "Record:"
 
 #. module: mail
 #: model:ir.model.fields,field_description:mail.field_mail_mail__references
@@ -7663,7 +7663,7 @@ msgstr "Tolak"
 #: model:ir.model.fields,field_description:mail.field_res_partner__parent_id
 #: model:ir.model.fields,field_description:mail.field_res_users__parent_id
 msgid "Related Company"
-msgstr ""
+msgstr "Perusahaan Terkait"
 
 #. module: mail
 #: model:ir.model.fields,field_description:mail.field_mail_activity__res_id
@@ -7816,7 +7816,7 @@ msgstr ""
 #. module: mail
 #: model:ir.model.fields,field_description:mail.field_res_users__res_users_settings_ids
 msgid "Res Users Settings"
-msgstr ""
+msgstr "Pengaturan Res Users"
 
 #. module: mail
 #: model:ir.model.fields,field_description:mail.field_mail_resend_partner__resend_wizard_id
@@ -8368,6 +8368,8 @@ msgid ""
 "Server replied with following exception:\n"
 " %s"
 msgstr ""
+"Server membalas dengan pengecualian berikut:\n"
+" %s"
 
 #. module: mail
 #: model_terms:ir.ui.view,arch_db:mail.view_email_server_search
@@ -9113,7 +9115,7 @@ msgstr ""
 #: model:ir.model.fields,help:mail.field_res_partner__user_id
 #: model:ir.model.fields,help:mail.field_res_users__user_id
 msgid "The internal user in charge of this contact."
-msgstr ""
+msgstr "User internal yang bertanggung jawab untuk kontak ini."
 
 #. module: mail
 #: model_terms:ir.ui.view,arch_db:mail.message_notification_limit_email
@@ -9178,7 +9180,7 @@ msgstr ""
 #: code:addons/mail/models/fetchmail.py:0
 #, python-format
 msgid "The server \"%s\" cannot be used because it is archived."
-msgstr ""
+msgstr "Server \"%s\" tidak dapat digunakan karena diarsip."
 
 #. module: mail
 #. odoo-javascript
@@ -9781,7 +9783,7 @@ msgstr "Unggah Dokumen"
 #: code:addons/mail/static/src/backend_components/activity_list_view_item/activity_list_view_item.xml:0
 #, python-format
 msgid "Upload File"
-msgstr ""
+msgstr "Unggah File"
 
 #. module: mail
 #. odoo-javascript
@@ -9882,7 +9884,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:mail.res_users_settings_view_form
 #: model_terms:ir.ui.view,arch_db:mail.res_users_settings_view_tree
 msgid "User Settings"
-msgstr ""
+msgstr "Pengaturan User"
 
 #. module: mail
 #: model:ir.model,name:mail.model_res_users_settings_volumes
@@ -10449,6 +10451,9 @@ msgid ""
 " users it is important to change it immediately for security reasons. I will"
 " keep nagging you about it!"
 msgstr ""
+"Password Anda adalah default (admin)! Bila sistem ini terbuka ke user yang "
+"tidak dipercaya penting bagi Anda untuk langsung merubahnya untuk alasan "
+"keamanan. Saya akan terus mengingatkan Anda mengenai hal ini!"
 
 #. module: mail
 #. odoo-javascript
@@ -29658,7 +29663,7 @@ msgstr ""
 #: code:addons/mail/static/src/models_data/emoji_data.js:0
 #, python-format
 msgid "second"
-msgstr ""
+msgstr "detik"
 
 #. module: mail
 #. odoo-javascript

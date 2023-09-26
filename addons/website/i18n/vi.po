@@ -11,6 +11,7 @@
 # Duy BQ <duybq86@gmail.com>, 2022
 # Nancy Momoland <thanh.np2502@gmail.com>, 2022
 # Martin Trigaux, 2023
+# Wil Odoo, 2023
 # Thi Huong Nguyen, 2023
 # 
 msgid ""
@@ -4074,7 +4075,7 @@ msgstr "Sửa"
 #: code:addons/website/static/src/services/website_custom_menus.js:0
 #, python-format
 msgid "Edit %s"
-msgstr ""
+msgstr "Chỉnh sửa %s"
 
 #. module: website
 #. odoo-javascript
@@ -7701,6 +7702,13 @@ msgid "Pay"
 msgstr "Thanh toán"
 
 #. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/js/form_editor_registry.js:0
+#, python-format
+msgid "Phone Number"
+msgstr "Số Điện thoại"
+
+#. module: website
 #: model_terms:ir.ui.view,arch_db:website.s_mega_menu_thumbnails
 msgid "Phones"
 msgstr "Số điện thoại"
@@ -9239,6 +9247,13 @@ msgstr "Đang nhập"
 #: model_terms:ir.ui.view,arch_db:website.snippet_options
 msgid "Sub Menus"
 msgstr "Sub Menus"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/js/form_editor_registry.js:0
+#, python-format
+msgid "Subject"
+msgstr "Tiêu đề"
 
 #. module: website
 #: model_terms:ir.ui.view,arch_db:website.contactus
@@ -11355,6 +11370,13 @@ msgid "You'll be able to create your pages later on."
 msgstr "Bạn có thể tạo các trang sau."
 
 #. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/js/form_editor_registry.js:0
+#, python-format
+msgid "Your Company"
+msgstr ""
+
+#. module: website
 #: model_terms:ir.ui.view,arch_db:website.s_dynamic_snippet_template
 msgid ""
 "Your Dynamic Snippet will be displayed here... This message is displayed "
@@ -11362,6 +11384,27 @@ msgid ""
 msgstr ""
 "Đoạn mã động của bạn sẽ được hiển thị ở đây... Thông báo này được hiển thị "
 "vì bạn không cung cấp cả bộ lọc và mẫu để sử dụng.<br/>"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/js/form_editor_registry.js:0
+#, python-format
+msgid "Your Email"
+msgstr "Email"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/js/form_editor_registry.js:0
+#, python-format
+msgid "Your Name"
+msgstr "Tên"
+
+#. module: website
+#. odoo-javascript
+#: code:addons/website/static/src/js/form_editor_registry.js:0
+#, python-format
+msgid "Your Question"
+msgstr ""
 
 #. module: website
 #. odoo-javascript

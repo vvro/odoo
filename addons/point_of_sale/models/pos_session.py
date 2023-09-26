@@ -328,7 +328,7 @@ class PosSession(models.Model):
                 self.move_id.sudo().with_company(self.company_id)._post()
                 #We need to write the price_subtotal and price_total here because if we do it earlier the compute functions will overwrite it here /account/models/account_move_line.py _compute_totals
                 for dummy, amount_data in data['sales'].items():
-                    self.env['account.move.line'].browse(amount_data['move_line_id']).write({
+                    self.env['account.move.line'].browse(amount_data['move_line_id']).sudo().with_company(self.company_id).write({
                         'price_subtotal': abs(amount_data['amount_converted']),
                         'price_total': abs(amount_data['amount_converted']) + abs(amount_data['tax_amount']),
                     })
@@ -1453,7 +1453,8 @@ class PosSession(models.Model):
         # we are querying over the account.move.line because its 'ref' is indexed.
         # And yes, we are only concern for split bank payment methods.
         diff_lines_ref = [self._get_diff_account_move_ref(pm) for pm in self.payment_method_ids if pm.type == 'bank' and pm.split_transactions]
-        return self.env['account.move.line'].search([('ref', 'in', diff_lines_ref)]).mapped('move_id')
+        cost_move_lines = ['pos_order_'+str(rec.id) for rec in self.order_ids]
+        return self.env['account.move.line'].search([('ref', 'in', diff_lines_ref + cost_move_lines)]).mapped('move_id')
 
     def _get_related_account_moves(self):
         pickings = self.picking_ids | self.order_ids.mapped('picking_ids')

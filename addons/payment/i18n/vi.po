@@ -6,6 +6,7 @@
 # Thin Tran <trvathin@gmail.com>, 2022
 # Martin Trigaux, 2022
 # Nancy Momoland <thanh.np2502@gmail.com>, 2023
+# Thang Nguyen, 2023
 # Thi Huong Nguyen, 2023
 # 
 msgid ""
@@ -45,8 +46,8 @@ msgid ""
 "<h3>Please make a payment to: </h3><ul><li>Bank: %s</li><li>Account Number: "
 "%s</li><li>Account Holder: %s</li></ul>"
 msgstr ""
-"<h3>Please make a payment to: </h3><ul><li>Bank: %s</li><li>Account Number: "
-"%s</li><li>Account Holder: %s</li></ul>"
+"<h3>Vui lòng thực hiện thanh toán tới: </h3><ul><li>Ngân hàng: %s</li><li>Số"
+" tài khoản: %s</li><li>Chủ tài khoản: %s</li></ul>"
 
 #. module: payment
 #: model_terms:ir.ui.view,arch_db:payment.confirm
@@ -856,6 +857,8 @@ msgid ""
 "In test mode, a fake payment is processed through a test payment interface.\n"
 "This mode is advised when setting up the provider."
 msgstr ""
+"Trong chế độ kiểm thử, một khoản thanh toán giả sẽ được xử lý thông qua giao diện thanh toán kiểm thử.\n"
+"Nên dùng chế độ này khi thiết lập nhà cung cấp dịch vụ thanh toán."
 
 #. module: payment
 #: model:ir.model.fields,field_description:payment.field_payment_provider__inline_form_view_id
@@ -1058,7 +1061,7 @@ msgstr "Chưa xong"
 #. module: payment
 #: model_terms:ir.ui.view,arch_db:payment.verified_token_checkmark
 msgid "Not verified"
-msgstr ""
+msgstr "Không được xác minh"
 
 #. module: payment
 #: model:ir.model.fields,field_description:payment.field_payment_provider__module_to_buy
@@ -1882,7 +1885,7 @@ msgstr ""
 #. module: payment
 #: model:ir.model.fields,field_description:payment.field_payment_provider__support_refund
 msgid "Type of Refund Supported"
-msgstr ""
+msgstr "Loại hoàn tiền được hỗ trợ"
 
 #. module: payment
 #. odoo-javascript
@@ -1992,7 +1995,7 @@ msgstr ""
 #: code:addons/payment/static/src/js/post_processing.js:0
 #, python-format
 msgid "We are processing your payment, please wait ..."
-msgstr "We are processing your payment, please wait ..."
+msgstr "Chúng tôi đang xử lý thanh toán, vui lòng chờ ..."
 
 #. module: payment
 #. odoo-javascript

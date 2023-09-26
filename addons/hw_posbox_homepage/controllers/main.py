@@ -217,8 +217,7 @@ class IoTboxHomepage(Home):
             token = helpers.get_token()
         if iotname and platform.system() == 'Linux':
             subprocess.check_call([get_resource_path('point_of_sale', 'tools/posbox/configuration/rename_iot.sh'), iotname])
-        else:
-            helpers.odoo_restart(3)
+        helpers.odoo_restart(5)
         return 'http://' + helpers.get_ip() + ':8069'
 
     @http.route('/steps', type='http', auth='none', cors='*', csrf=False)
@@ -290,8 +289,12 @@ class IoTboxHomepage(Home):
 
     @http.route('/six_payment_terminal_add', type='http', auth='none', cors='*', csrf=False)
     def add_six_payment_terminal(self, terminal_id):
-        helpers.write_file('odoo-six-payment-terminal.conf', terminal_id)
-        service.server.restart()
+        if terminal_id.isdigit():
+            helpers.write_file('odoo-six-payment-terminal.conf', terminal_id)
+            service.server.restart()
+        else:
+            _logger.warning('Ignoring invalid Six TID: "%s". Only digits are allowed', terminal_id)
+            self.clear_six_payment_terminal()
         return 'http://' + helpers.get_ip() + ':8069'
 
     @http.route('/six_payment_terminal_clear', type='http', auth='none', cors='*', csrf=False)
