@@ -10,6 +10,7 @@ var Widget = require('web.Widget');
 var options = require('web_editor.snippets.options');
 const {ColorPaletteWidget} = require('web_editor.ColorPalette');
 const SmoothScrollOnDrag = require('web/static/src/js/core/smooth_scroll_on_drag.js');
+const {SIZES, MEDIAS_BREAKPOINTS} = require('@web/core/ui/ui_service');
 const {getCSSVariableValue, shouldEditableMediaBeEditable} = require('web_editor.utils');
 const gridUtils = require('@web_editor/js/common/grid_layout_utils');
 const QWeb = core.qweb;
@@ -312,7 +313,10 @@ var SnippetEditor = Widget.extend({
         for (var i in this.styles) {
             await this.styles[i].onBuilt();
         }
+        // TODO In master differentiate device-based visibility.
+        this._toggleVisibilityStatusIgnoreDeviceVisibility = true;
         await this.toggleTargetVisibility(true);
+        this._toggleVisibilityStatusIgnoreDeviceVisibility = false;
     },
     /**
      * Notifies all the associated snippet options that the template which
@@ -889,6 +893,18 @@ var SnippetEditor = Widget.extend({
      * @param {boolean} [show]
      */
     _toggleVisibilityStatus: function (show) {
+        // TODO In master differentiate device-based visibility.
+        if (this._toggleVisibilityStatusIgnoreDeviceVisibility) {
+            if (this.$target[0].matches(".o_snippet_mobile_invisible, .o_snippet_desktop_invisible")) {
+                const mobileViewThreshold = MEDIAS_BREAKPOINTS[SIZES.LG].minWidth;
+                const isMobilePreview = this.$target[0].ownerDocument.defaultView.frameElement.clientWidth < mobileViewThreshold;
+                const isMobileHidden = this.$target[0].classList.contains("o_snippet_mobile_invisible");
+                if (isMobilePreview === isMobileHidden) {
+                    // Preview mode and hidden type are the same.
+                    show = false;
+                }
+            }
+        }
         if (show === undefined) {
             show = !this.isTargetVisible();
         }
@@ -3118,7 +3134,7 @@ var SnippetsMenu = Widget.extend({
         }
 
         var def;
-        if (!$snippet[0].classList.contains('o_no_parent_editor')) {
+        if (this._allowParentsEditors($snippet)) {
             var $parent = globalSelector.closest($snippet.parent());
             if ($parent.length) {
                 def = this._createSnippetEditor($parent);
@@ -3674,6 +3690,13 @@ var SnippetsMenu = Widget.extend({
             forceEmptyTab: true,
         });
     },
+    /**
+     * @private
+     */
+    _allowParentsEditors($snippet) {
+        return !this.options.enableTranslation
+            && !$snippet[0].classList.contains("o_no_parent_editor");
+    },
 
     //--------------------------------------------------------------------------
     // Handlers
@@ -4022,8 +4045,8 @@ var SnippetsMenu = Widget.extend({
             <we-input class="o_we_user_value_widget w-100 mx-1">
                 <div>
                     <input type="text" autocomplete="chrome-off" value="${snippetName}" class="text-start"/>
-                    <we-button class="o_we_confirm_btn o_we_text_success fa fa-check" title="${confirmText}"/>
-                    <we-button class="o_we_cancel_btn o_we_text_danger fa fa-times" title="${cancelText}"/>
+                    <we-button class="o_we_confirm_btn o_we_text_success fa fa-check" title="${confirmText}"></we-button>
+                    <we-button class="o_we_cancel_btn o_we_text_danger fa fa-times" title="${cancelText}"></we-button>
                 </div>
             </we-input>
         `);
@@ -4081,7 +4104,8 @@ var SnippetsMenu = Widget.extend({
      */
     _onMouseUp(ev) {
         const snippetEl = ev.target.closest('.oe_snippet');
-        if (snippetEl) {
+        if (snippetEl && !snippetEl.querySelector(".o_we_already_dragging")
+                    && !ev.target.matches(".o_rename_btn")) {
             this._showSnippetTooltip($(snippetEl));
         }
     },
@@ -4417,16 +4441,46 @@ var SnippetsMenu = Widget.extend({
      * Preview on mobile.
      */
     _onMobilePreviewClick() {
-        this.trigger_up('request_mobile_preview');
-
         // TODO refactor things to make this more understandable -> on mobile
         // edition, update the UI. But to do it properly and inside the mutex
         // this simulates what happens when a snippet option is used.
         this._execWithLoadingEffect(async () => {
+            const initialBodySize = this.$body[0].clientWidth;
+            this.trigger_up('request_mobile_preview');
+
             // TODO needed so that mobile edition is considered before updating
             // the UI but this is clearly random. The trigger_up above should
-            // properly await for the rerender somehow.
-            await new Promise(resolve => setTimeout(resolve));
+            // properly await for the rerender somehow or, better, the UI update
+            // should not depend on the mobile re-render entirely.
+            let count = 0;
+            do {
+                await new Promise(resolve => setTimeout(resolve, 1));
+            // Technically, should not be possible to fall into an infinite loop
+            // but extra safety as a stable fix.
+            } while (count++ < 1000 && Math.abs(this.$body[0].clientWidth - initialBodySize) < 1);
+
+            // Reload images inside grid items so that no image disappears when
+            // activating mobile preview.
+            const $gridItemEls = this.getEditableArea().find('div.o_grid_item');
+            for (const gridItemEl of $gridItemEls) {
+                gridUtils._reloadLazyImages(gridItemEl);
+            }
+
+            // TODO In future version use tool method to determine isMobilePreview.
+            const mobileViewThreshold = MEDIAS_BREAKPOINTS[SIZES.LG].minWidth;
+            const isMobilePreview = this.$body[0].ownerDocument.defaultView.frameElement.clientWidth < mobileViewThreshold;
+            for (const invisibleOverrideEl of this.getEditableArea().find('.o_snippet_mobile_invisible, .o_snippet_desktop_invisible')) {
+                const isMobileHidden = invisibleOverrideEl.classList.contains("o_snippet_mobile_invisible");
+                invisibleOverrideEl.classList.remove('o_snippet_override_invisible');
+                if (isMobilePreview === isMobileHidden) {
+                    invisibleOverrideEl.dataset.invisible = '1';
+                } else {
+                    delete invisibleOverrideEl.dataset.invisible;
+                }
+            }
+
+            // This is async but using the main editor mutex, currently locked.
+            this._updateInvisibleDOM();
 
             return new Promise(resolve => {
                 this.trigger_up('snippet_option_update', {
@@ -4434,19 +4488,6 @@ var SnippetsMenu = Widget.extend({
                 });
             });
         }, false);
-
-        // Reload images inside grid items so that no image disappears when
-        // activating mobile preview.
-        const $gridItemEls = this.getEditableArea().find('div.o_grid_item');
-        for (const gridItemEl of $gridItemEls) {
-            gridUtils._reloadLazyImages(gridItemEl);
-        }
-        for (const invisibleOverrideEl of this.getEditableArea().find('.o_snippet_mobile_invisible, .o_snippet_desktop_invisible')) {
-            invisibleOverrideEl.classList.remove('o_snippet_override_invisible');
-            invisibleOverrideEl.dataset.invisible = '1';
-        }
-        // This is async but using the main editor mutex.
-        this._updateInvisibleDOM();
     },
     /**
      * Undo..
