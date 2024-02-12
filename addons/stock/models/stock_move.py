@@ -867,6 +867,8 @@ Please change the quantity done or the rounding precision of your unit of measur
         # `write` on `stock.move.line` doesn't call `_recompute_state` (unlike to `unlink`),
         # so it must be called for each move where no move line has been deleted.
         (moves_to_unreserve - moves_not_to_recompute)._recompute_state()
+        if moves_to_unreserve and self.env.context.get('unreserve_parent'):
+            self.env['stock.move'].browse(moves_to_unreserve._rollup_move_origs())._do_unreserve()
         return True
 
     def _generate_serial_numbers(self, next_serial_count=False):
@@ -1541,7 +1543,7 @@ Please change the quantity done or the rounding precision of your unit of measur
         return self.env['stock.quant']._get_available_quantity(self.product_id, location_id, lot_id=lot_id, package_id=package_id, owner_id=owner_id, strict=strict, allow_negative=allow_negative)
 
     def _get_available_move_lines_in(self):
-        move_lines_in = self.move_orig_ids.filtered(lambda m: m.state == 'done').mapped('move_line_ids')
+        move_lines_in = self.move_orig_ids.move_dest_ids.move_orig_ids.filtered(lambda m: m.state == 'done').mapped('move_line_ids')
 
         def _keys_in_groupby(ml):
             return (ml.location_dest_id, ml.lot_id, ml.result_package_id, ml.owner_id)
@@ -2139,6 +2141,15 @@ Please change the quantity done or the rounding precision of your unit of measur
                                                          order='reservation_date, priority desc, date asc, id asc')
         moves_to_reserve._action_assign()
 
+    def _rollup_move_origs(self, seen=False):
+        if not seen:
+            seen = OrderedSet()
+        for dst in self.move_orig_ids:
+            if dst.id not in seen and dst.state not in ('done', 'cancel'):
+                seen.add(dst.id)
+                dst._rollup_move_origs(seen)
+        return seen
+
     def _rollup_move_dests(self, seen):
         for dst in self.move_dest_ids:
             if dst.id not in seen:
@@ -2283,5 +2294,6 @@ Please change the quantity done or the rounding precision of your unit of measur
             return self.env['stock.move']
         moves |= self
         for move in self.move_orig_ids:
-            moves |= move._get_moves_orig(moves)
+            if move.location_id.warehouse_id == self.location_id.warehouse_id:
+                moves |= move._get_moves_orig(moves)
         return moves

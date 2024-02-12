@@ -12,6 +12,11 @@ from freezegun import freeze_time
 @freeze_time(fields.Date.today())
 class TestBoM(TestMrpCommon):
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.env.ref('base.group_user').write({'implied_ids': [(4, cls.env.ref('product.group_product_variant').id)]})
+
     def test_01_explode(self):
         boms, lines = self.bom_1.explode(self.product_4, 3)
         self.assertEqual(set([bom[0].id for bom in boms]), set(self.bom_1.ids))
@@ -1082,6 +1087,19 @@ class TestBoM(TestMrpCommon):
         self.assertEqual(line1_values['availability_state'], 'available', 'The first component should be available.')
         self.assertEqual(line2_values['availability_state'], 'unavailable', 'The second component should be marked as unavailable')
 
+    def test_report_data_bom_with_0_qty(self):
+        """
+        Test that a bom with a child-bom set with a zero qty will still have have 0 qty for the child-bom on the report.
+        """
+        self.bom_4.bom_line_ids = [(0, 0, {
+            'product_id': self.bom_2.product_id.id,
+            'product_qty': 1.0,
+        })]
+        self.bom_4.bom_line_ids.product_qty = 0
+        report_values = self.env['report.mrp.report_bom_structure']._get_report_data(bom_id=self.bom_4.id, searchQty=1, searchVariant=False)
+
+        self.assertEqual(sum([value['quantity'] for value in report_values['lines']['components'][:2]]), 0, 'The quantity should be set to 0 for all components of the bom.')
+
     def test_validate_no_bom_line_with_same_product(self):
         """
         Cannot set a BOM line on a BOM with the same product as the BOM itself
@@ -1159,12 +1177,14 @@ class TestBoM(TestMrpCommon):
 
         uom_kg = self.env.ref('uom.product_uom_kgm')
         uom_gram = self.env.ref('uom.product_uom_gram')
+        manufacturing_route_id = self.ref('mrp.route_warehouse0_manufacture')
 
         product_gram = self.env['product.product'].create({
             'name': 'Product sold in grams',
             'type': 'product',
             'uom_id': uom_gram.id,
             'uom_po_id': uom_gram.id,
+            'route_ids': [(4, manufacturing_route_id)],
         })
         # We create a BoM that manufactures 2kg of product
         self.env['mrp.bom'].create({
@@ -1187,7 +1207,6 @@ class TestBoM(TestMrpCommon):
         self.env.flush_all()
         self.env['stock.warehouse.orderpoint']._get_orderpoint_action()
         orderpoint = self.env['stock.warehouse.orderpoint'].search([('product_id', '=', product_gram.id)])
-        manufacturing_route_id = self.ref('mrp.route_warehouse0_manufacture')
         self.assertEqual(orderpoint.route_id.id, manufacturing_route_id)
         self.assertEqual(orderpoint.qty_multiple, 2000.0)
         self.assertEqual(orderpoint.qty_to_order, 4000.0)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import _, models, Command
+from odoo.addons.base.models.res_bank import sanitize_account_number
 from odoo.tools import float_repr
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_round
@@ -161,17 +162,6 @@ class AccountEdiCommon(models.AbstractModel):
                 return create_dict(tax_category_code='L')
             if customer.zip[:2] in ('51', '52'):
                 return create_dict(tax_category_code='M')  # Ceuta & Mellila
-
-        # see: https://anskaffelser.dev/postaward/g3/spec/current/billing-3.0/norway/#_value_added_tax_norwegian_mva
-        if customer.country_id.code == 'NO':
-            if tax.amount == 25:
-                return create_dict(tax_category_code='S', tax_exemption_reason=_('Output VAT, regular rate'))
-            if tax.amount == 15:
-                return create_dict(tax_category_code='S', tax_exemption_reason=_('Output VAT, reduced rate, middle'))
-            if tax.amount == 11.11:
-                return create_dict(tax_category_code='S', tax_exemption_reason=_('Output VAT, reduced rate, raw fish'))
-            if tax.amount == 12:
-                return create_dict(tax_category_code='S', tax_exemption_reason=_('Output VAT, reduced rate, low'))
 
         if supplier.country_id == customer.country_id:
             if not tax or tax.amount == 0:
@@ -357,6 +347,42 @@ class AccountEdiCommon(models.AbstractModel):
             invoice.partner_id = self.env['res.partner'].create(partner_vals)
             if vat and self.env['res.partner']._run_vat_test(vat, country, invoice.partner_id.is_company):
                 invoice.partner_id.vat = vat
+
+    def _import_retrieve_and_fill_partner_bank_details(self, invoice, bank_details):
+        """ Retrieve the bank account, if no matching bank account is found, create it
+        """
+
+        bank_details = map(sanitize_account_number, bank_details)
+
+        if invoice.move_type in ('out_refund', 'in_invoice'):
+            partner = invoice.partner_id
+        elif invoice.move_type in ('out_invoice', 'in_refund'):
+            partner = self.env.company.partner_id
+        else:
+            return
+
+        banks_to_create = []
+        acc_number_partner_bank_dict = {
+            bank.sanitized_acc_number: bank
+            for bank in self.env['res.partner.bank'].search(
+                [('company_id', 'in', [False, invoice.company_id.id]), ('acc_number', 'in', bank_details)]
+            )
+        }
+
+        for account_number in bank_details:
+            partner_bank = acc_number_partner_bank_dict.get(account_number, self.env['res.partner.bank'])
+
+            if partner_bank.partner_id == partner:
+                invoice.partner_bank_id = partner_bank
+                return
+            elif not partner_bank and account_number:
+                banks_to_create.append({
+                    'acc_number': account_number,
+                    'partner_id': partner.id,
+                })
+
+        if banks_to_create:
+            invoice.partner_bank_id = self.env['res.partner.bank'].create(banks_to_create)[0]
 
     def _import_fill_invoice_allowance_charge(self, tree, invoice, journal, qty_factor):
         logs = []
@@ -675,15 +701,24 @@ class AccountEdiCommon(models.AbstractModel):
                 ('type_tax_use', '=', journal.type),
                 ('amount', '=', amount),
             ]
-            tax_excl = self.env['account.tax'].search(domain + [('price_include', '=', False)], limit=1)
-            tax_incl = self.env['account.tax'].search(domain + [('price_include', '=', True)], limit=1)
-            if tax_excl:
-                inv_line_vals['taxes'].append(tax_excl.id)
-            elif tax_incl:
-                inv_line_vals['taxes'].append(tax_incl.id)
-                inv_line_vals['price_unit'] *= (1 + tax_incl.amount / 100)
-            else:
+
+            tax = False
+            if hasattr(invoice_line_form, '_predict_specific_tax'):
+                # company check is already done in the prediction query
+                predicted_tax_id = invoice_line_form\
+                    ._predict_specific_tax('percent', amount, invoice_line_form.move_id.journal_id.type)
+                tax = self.env['account.tax'].browse(predicted_tax_id)
+            if not tax:
+                tax = self.env['account.tax'].search(domain + [('price_include', '=', False)], limit=1)
+            if not tax:
+                tax = self.env['account.tax'].search(domain + [('price_include', '=', True)], limit=1)
+
+            if not tax:
                 logs.append(_("Could not retrieve the tax: %s %% for line '%s'.", amount, invoice_line_form.name))
+            else:
+                inv_line_vals['taxes'].append(tax.id)
+                if tax.price_include:
+                    inv_line_vals['price_unit'] *= (1 + tax.amount / 100)
 
         # Handle Fixed Taxes
         for fixed_tax_vals in inv_line_vals['fixed_taxes_list']:

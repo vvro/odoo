@@ -184,7 +184,7 @@ class SaleOrder(models.Model):
     currency_rate = fields.Float(
         string="Currency Rate",
         compute='_compute_currency_rate',
-        digits=(12, 6),
+        digits=0,
         store=True, precompute=True)
     user_id = fields.Many2one(
         comodel_name='res.users',
@@ -416,7 +416,7 @@ class SaleOrder(models.Model):
     def _compute_team_id(self):
         cached_teams = {}
         for order in self:
-            default_team_id = self.env.context.get('default_team_id', False) or order.team_id.id or order.partner_id.team_id.id
+            default_team_id = self.env.context.get('default_team_id', False) or order.partner_id.team_id.id or order.team_id.id
             user_id = order.user_id.id
             company_id = order.company_id.id
             key = (default_team_id, user_id, company_id)
@@ -588,6 +588,7 @@ class SaleOrder(models.Model):
                 order.partner_credit_warning = self.env['account.move']._build_credit_warning_message(
                     order, updated_credit)
 
+    @api.depends_context('lang')
     @api.depends('order_line.tax_id', 'order_line.price_unit', 'amount_total', 'amount_untaxed', 'currency_id')
     def _compute_tax_totals(self):
         for order in self:
@@ -820,7 +821,9 @@ class SaleOrder(models.Model):
         context.pop('default_name', None)
 
         self.with_context(context)._action_confirm()
-        if self.env.user.has_group('sale.group_auto_done_setting'):
+
+        if self[:1].create_uid.has_group('sale.group_auto_done_setting'):
+            # Public user can confirm SO, so we check the group on any record creator.
             self.action_done()
 
         return True
@@ -1502,3 +1505,13 @@ class SaleOrder(models.Model):
         # Override for correct taxcloud computation
         # when using coupon and delivery
         return True
+
+    #=== TOOLING ===#
+
+    def _get_lang(self):
+        self.ensure_one()
+
+        if self.partner_id.lang and not self.partner_id.is_public:
+            return self.partner_id.lang
+
+        return self.env.lang

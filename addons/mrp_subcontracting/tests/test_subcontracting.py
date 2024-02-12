@@ -759,6 +759,7 @@ class TestSubcontractingFlows(TestMrpSubcontractingCommon):
         self.assertEqual(sum(subcontracted.mapped('qty_produced')), quantities[-1])
 
     def test_change_reception_serial(self):
+        self.env.ref('base.group_user').write({'implied_ids': [(4, self.env.ref('stock.group_production_lot').id)]})
         self.finished.tracking = 'serial'
         self.bom.consumption = 'flexible'
 
@@ -843,15 +844,21 @@ class TestSubcontractingFlows(TestMrpSubcontractingCommon):
         mo.subcontracting_record_component()
         self.assertEqual(move.quantity_done, 7)
 
+        # Check MO state before validating without backorder
+        action = move.action_show_details()
+        mo = self.env['mrp.production'].browse(action['res_id'])
+        self.assertEqual(mo.state, 'to_close')
+
         # Validate picking without backorder
         backorder_wizard_dict = picking_receipt.button_validate()
         backorder_wizard_form = Form(self.env[backorder_wizard_dict['res_model']].with_context(backorder_wizard_dict['context']))
         backorder_wizard_form.save().process_cancel_backorder()
 
+        self.assertEqual(mo.product_qty, 3)
+        self.assertEqual(mo.state, 'cancel')
         self.assertRecordValues(move._get_subcontract_production(), [
             {'product_qty': 5, 'state': 'done'},
             {'product_qty': 2, 'state': 'done'},
-            {'product_qty': 3, 'state': 'cancel'},
         ])
 
     def test_decrease_quantity_done(self):
@@ -930,6 +937,8 @@ class TestSubcontractingTracking(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.env.ref('base.group_user').write({'implied_ids': [(4, cls.env.ref('stock.group_production_lot').id)]})
+
         # 1: Create a subcontracting partner
         main_company_1 = cls.env['res.partner'].create({'name': 'main_partner'})
         cls.subcontractor_partner1 = cls.env['res.partner'].create({
@@ -1319,7 +1328,7 @@ class TestSubcontractingPortal(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
+        cls.env.ref('base.group_user').write({'implied_ids': [(4, cls.env.ref('stock.group_production_lot').id)]})
         # 1: Create a subcontracting partner
         main_partner = cls.env['res.partner'].create({'name': 'main_partner'})
         cls.subcontractor_partner1 = cls.env['res.partner'].create({
@@ -1334,7 +1343,7 @@ class TestSubcontractingPortal(TransactionCase):
             'login': 'subcontractor',
             'password': 'subcontractor',
             'email': 'subcontractor@subcontracting.portal',
-            'groups_id': [(6, 0, [cls.env.ref('base.group_portal').id])]
+            'groups_id': [(6, 0, [cls.env.ref('base.group_portal').id, cls.env.ref('stock.group_production_lot').id])]
         })
 
         # 2. Create a BOM of subcontracting type
