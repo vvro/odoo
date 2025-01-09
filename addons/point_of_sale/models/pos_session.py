@@ -198,12 +198,13 @@ class PosSession(models.Model):
         pricelist_item_fields = self.env['product.pricelist.item']._load_pos_data_fields(config_id)
 
         pricelist_item_domain = [
-            '|',
-            ('company_id', '=', False),
-            ('company_id', '=', self.company_id.id),
+            '&',
+            ('pricelist_id', 'in', self.config_id._get_available_pricelists().ids),
+            *self.env['product.pricelist.item']._check_company_domain(self.company_id),
             '|',
             '&', ('product_id', '=', False), ('product_tmpl_id', 'in', product_tmpl_ids),
-            ('product_id', 'in', product_ids)]
+            ('product_id', 'in', product_ids)
+        ]
 
         pricelist_item = self.env['product.pricelist.item'].search(pricelist_item_domain)
         pricelist = pricelist_item.pricelist_id
@@ -352,11 +353,16 @@ class PosSession(models.Model):
 
     def login(self):
         self.ensure_one()
-        login_number = self.login_number + 1
-        self.write({
-            'login_number': login_number,
-        })
-        return login_number
+        # FIX for stable version, we cannot modify the actual login_number field
+        code = f"pos.session.login_number{self.id}"
+        session_seq = self.env['ir.sequence'].search_count([('code', '=', code)])
+        if not session_seq:
+            self.env['ir.sequence'].create({
+                'name': f"POS Session {self.id}",
+                'code': code,
+                'company_id': self.company_id.id,
+            })
+        return self.env['ir.sequence'].next_by_code(code)
 
     def action_pos_session_open(self):
         # we only open sessions that haven't already been opened
@@ -370,10 +376,13 @@ class PosSession(models.Model):
             session.write(values)
         return True
 
+    def get_session_orders(self):
+        return self.order_ids
+
     def action_pos_session_closing_control(self, balancing_account=False, amount_to_balance=0, bank_payment_method_diffs=None):
         bank_payment_method_diffs = bank_payment_method_diffs or {}
         for session in self:
-            if any(order.state == 'draft' for order in session.order_ids):
+            if any(order.state == 'draft' for order in self.get_session_orders()):
                 raise UserError(_("You cannot close the POS when orders are still in draft"))
             if session.state == 'closed':
                 raise UserError(_('This session is already closed.'))
@@ -411,7 +420,7 @@ class PosSession(models.Model):
         self.ensure_one()
         data = {}
         sudo = self.env.user.has_group('point_of_sale.group_pos_user')
-        if self.order_ids.filtered(lambda o: o.state != 'cancel') or self.sudo().statement_line_ids:
+        if self.get_session_orders().filtered(lambda o: o.state != 'cancel') or self.sudo().statement_line_ids:
             self.cash_real_transaction = sum(self.sudo().statement_line_ids.mapped('amount'))
             if self.state == 'closed':
                 raise UserError(_('This session is already closed.'))
@@ -457,7 +466,7 @@ class PosSession(models.Model):
             self.sudo()._post_statement_difference(self.cash_register_difference)
 
         if self.config_id.order_edit_tracking:
-            edited_orders = self.order_ids.filtered(lambda o: o.is_edited)
+            edited_orders = self.get_session_orders().filtered(lambda o: o.is_edited)
             if len(edited_orders) > 0:
                 body = _("Edited order(s) during the session:%s",
                     Markup("<br/><ul>%s</ul>") % Markup().join(Markup("<li>%s</li>") % order._get_html_link() for order in edited_orders)
@@ -541,7 +550,7 @@ class PosSession(models.Model):
         self.ensure_one()
         # Even if this is called in `post_closing_cash_details`, we need to call this here too for case
         # where cash_control = False
-        open_order_ids = self.order_ids.filtered(lambda o: o.state == 'draft').ids
+        open_order_ids = self.get_session_orders().filtered(lambda o: o.state == 'draft').ids
         check_closing_session = self._cannot_close_session(bank_payment_method_diffs)
         if check_closing_session:
             check_closing_session['open_order_ids'] = open_order_ids
@@ -561,7 +570,7 @@ class PosSession(models.Model):
             }
 
         self.post_close_register_message()
-
+        self.config_id._notify(('CLOSING_SESSION', {'login_number': self.env.context.get('login_number', False)}))
         return {'successful': True}
 
     def post_close_register_message(self):
@@ -588,7 +597,7 @@ class PosSession(models.Model):
         self.ensure_one()
         check_closing_session = self._cannot_close_session()
         if check_closing_session:
-            open_order_ids = self.order_ids.filtered(lambda o: o.state == 'draft').ids
+            open_order_ids = self.get_session_orders().filtered(lambda o: o.state == 'draft').ids
             check_closing_session['open_order_ids'] = open_order_ids
             return check_closing_session
 
@@ -645,7 +654,7 @@ class PosSession(models.Model):
         It should return {'successful': False, 'message': str, 'redirect': bool} if we can't close the session
         """
         bank_payment_method_diffs = bank_payment_method_diffs or {}
-        if any(order.state == 'draft' for order in self.order_ids):
+        if any(order.state == 'draft' for order in self.get_session_orders()):
             return {'successful': False, 'message': _("You cannot close the POS when orders are still in draft"), 'redirect': False}
         if self.state == 'closed':
             return {
@@ -891,6 +900,7 @@ class PosSession(models.Model):
                 AccountTax._round_base_lines_tax_details(base_lines, order.company_id)
                 AccountTax._add_accounting_data_in_base_lines_tax_details(base_lines, order.company_id)
                 tax_results = AccountTax._prepare_tax_lines(base_lines, order.company_id)
+                total_amount_currency = 0.0
                 for base_line, to_update in tax_results['base_lines_to_update']:
                     # Combine sales/refund lines
                     sale_key = (
@@ -903,6 +913,7 @@ class PosSession(models.Model):
                         tuple(base_line['tax_tag_ids'].ids),
                         base_line['product_id'].id if self.config_id.is_closing_entry_by_product else False,
                     )
+                    total_amount_currency += to_update['amount_currency']
                     sales[sale_key] = self._update_amounts(
                         sales[sale_key],
                         {
@@ -921,6 +932,7 @@ class PosSession(models.Model):
                         tax_line['tax_repartition_line_id'],
                         tuple(tax_line['tax_tag_ids'][0][2]),
                     )
+                    total_amount_currency += tax_line['amount_currency']
                     taxes[tax_key] = self._update_amounts(
                         taxes[tax_key],
                         {
@@ -932,7 +944,7 @@ class PosSession(models.Model):
                     )
 
                 if self.config_id.cash_rounding:
-                    diff = order.amount_paid - order.amount_total
+                    diff = order.amount_paid + total_amount_currency
                     rounding_difference = self._update_amounts(rounding_difference, {'amount': diff}, order.date_order)
 
                 # Increasing current partner's customer_rank
@@ -940,7 +952,7 @@ class PosSession(models.Model):
                 partners._increase_rank('customer_rank')
 
         if self.company_id.anglo_saxon_accounting:
-            all_picking_ids = self.order_ids.filtered(lambda p: not p.is_invoiced).picking_ids.ids + self.picking_ids.filtered(lambda p: not p.pos_order_id).ids
+            all_picking_ids = self.order_ids.filtered(lambda p: not p.is_invoiced and not p.shipping_date).picking_ids.ids + self.picking_ids.filtered(lambda p: not p.pos_order_id).ids
             if all_picking_ids:
                 # Combine stock lines
                 stock_move_sudo = self.env['stock.move'].sudo()
@@ -1068,10 +1080,6 @@ class PosSession(models.Model):
         outstanding_account = payment_method.outstanding_account_id
         destination_account = self._get_receivable_account(payment_method)
 
-        if float_compare(amounts['amount'], 0, precision_rounding=self.currency_id.rounding) < 0:
-            # revert the accounts because account.payment doesn't accept negative amount.
-            outstanding_account, destination_account = destination_account, outstanding_account
-
         account_payment = self.env['account.payment'].create({
             'amount': abs(amounts['amount']),
             'journal_id': payment_method.journal_id.id,
@@ -1082,6 +1090,12 @@ class PosSession(models.Model):
             'pos_session_id': self.id,
             'company_id': self.company_id.id,
         })
+
+        if float_compare(amounts['amount'], 0, precision_rounding=self.currency_id.rounding) < 0:
+            # revert the accounts because account.payment doesn't accept negative amount.
+            account_payment.outstanding_account_id = account_payment.destination_account_id
+            account_payment.destination_account_id = account_payment.outstanding_account_id
+
         account_payment.action_post()
 
         diff_amount_compare_to_zero = self.currency_id.compare_amounts(diff_amount, 0)
@@ -1493,16 +1507,13 @@ class PosSession(models.Model):
         new_amounts['amount_converted'] += amount_converted
 
         # consider base_amount if present
-        if not amounts_to_add.get('base_amount') == None:
+
+        if amounts_to_add.get('base_amount'):
             base_amount = amounts_to_add.get('base_amount')
-            if self.is_in_company_currency or force_company_currency:
-                base_amount_converted = base_amount
-            else:
-                base_amount_converted = self._amount_converter(base_amount, date, round)
 
             # update base_amount and base_amount_converted
             new_amounts['base_amount'] += base_amount
-            new_amounts['base_amount_converted'] += base_amount_converted
+            new_amounts['base_amount_converted'] += base_amount
 
         return new_amounts
 
@@ -1701,7 +1712,7 @@ class PosSession(models.Model):
                 )
 
     def _check_if_no_draft_orders(self):
-        draft_orders = self.order_ids.filtered(lambda order: order.state == 'draft')
+        draft_orders = self.get_session_orders().filtered(lambda order: order.state == 'draft')
         if draft_orders:
             raise UserError(_(
                     'There are still orders in draft state in the session. '
@@ -1800,13 +1811,14 @@ class PosSession(models.Model):
     def find_product_by_barcode(self, barcode, config_id):
         product_fields = self.env['product.product']._load_pos_data_fields(config_id)
         product_packaging_fields = self.env['product.packaging']._load_pos_data_fields(config_id)
+        product_context = {**self.env.context, 'display_default_code': False}
         product = self.env['product.product'].search([
             ('barcode', '=', barcode),
             ('sale_ok', '=', True),
             ('available_in_pos', '=', True),
         ])
         if product:
-            return {'product.product': product.with_context({'display_default_code': False}).read(product_fields, load=False)}
+            return {'product.product': product.with_context(product_context).read(product_fields, load=False)}
 
         domain = [('barcode', 'not in', ['', False])]
         loaded_data = self._context.get('loaded_data')
@@ -1824,7 +1836,7 @@ class PosSession(models.Model):
         packaging = self.env['product.packaging'].search(packaging_params['search_params']['domain'])
 
         if packaging and packaging.product_id:
-            return {'product.product': packaging.product_id.with_context({'display_default_code': False}).read(product_fields, load=False), 'product.packaging': packaging.read(product_packaging_fields, load=False)}
+            return {'product.product': packaging.product_id.with_context(product_context).read(product_fields, load=False), 'product.packaging': packaging.read(product_packaging_fields, load=False)}
         else:
             return {
                 'product.product': [],
@@ -1870,6 +1882,14 @@ class PosSession(models.Model):
 
     def _get_closed_orders(self):
         return self.order_ids.filtered(lambda o: o.state not in ['draft', 'cancel'])
+
+    def _update_session_info(self, session_info):
+        session_info['user_context']['allowed_company_ids'] = self.company_id.ids
+        session_info['user_companies'] = {'current_company': self.company_id.id, 'allowed_companies': {self.company_id.id: session_info['user_companies']['allowed_companies'][self.company_id.id]}}
+        session_info['nomenclature_id'] = self.company_id.nomenclature_id.id
+        session_info['fallback_nomenclature_id'] = self._get_pos_fallback_nomenclature_id()
+        return session_info
+
 
 class ProcurementGroup(models.Model):
     _inherit = 'procurement.group'

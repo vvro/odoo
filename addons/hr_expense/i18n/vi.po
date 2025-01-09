@@ -4,15 +4,15 @@
 # 
 # Translators:
 # Wil Odoo, 2024
-# Thi Huong Nguyen, 2024
+# Thi Huong Nguyen, 2025
 # 
 msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 18.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-09-25 08:39+0000\n"
+"POT-Creation-Date: 2024-12-16 13:39+0000\n"
 "PO-Revision-Date: 2024-09-25 09:41+0000\n"
-"Last-Translator: Thi Huong Nguyen, 2024\n"
+"Last-Translator: Thi Huong Nguyen, 2025\n"
 "Language-Team: Vietnamese (https://app.transifex.com/odoo/teams/41243/vi/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -165,6 +165,9 @@ msgid ""
 "paid expenses. Or specify one in the Journal for the %(method)s payment "
 "method."
 msgstr ""
+"Tài khoản chưa thanh toán mặc định phải được xác định trong cài đặt cho chi "
+"phí do công ty thanh toán. Hoặc chỉ định một tài khoản trong Sổ nhật ký cho "
+"phương thức thanh toán %(method)s."
 
 #. module: hr_expense
 #: model:ir.model.fields,field_description:hr_expense.field_hr_expense__account_id
@@ -609,13 +612,8 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:hr_expense.res_config_settings_view_form
 msgid "Default outstanding account for expenses paid by company."
 msgstr ""
-
-#. module: hr_expense
-#: model_terms:ir.ui.view,arch_db:hr_expense.res_config_settings_view_form
-msgid "Default outstanding account for expenses paid by employees."
-msgstr ""
-"Tài khoản chưa thanh toán mặc định cho các chi phí được thanh toán bởi nhân "
-"viên."
+"Tài khoản chưa thanh toán mặc định cho các chi phí được thanh toán bởi công "
+"ty."
 
 #. module: hr_expense
 #: model:ir.model,name:hr_expense.model_hr_department
@@ -723,11 +721,6 @@ msgid "Employee Expense Journal"
 msgstr "Sổ nhật ký chi phí nhân viên"
 
 #. module: hr_expense
-#: model_terms:ir.ui.view,arch_db:hr_expense.res_config_settings_view_form
-msgid "Employee Expense Oustanding Account"
-msgstr "Tài khoản chưa thanh toán chi phí nhân viên"
-
-#. module: hr_expense
 #: model:ir.actions.act_window,name:hr_expense.action_hr_expense_account
 #: model:ir.ui.menu,name:hr_expense.menu_hr_expense_account_employee_expenses
 msgid "Employee Expenses"
@@ -814,7 +807,7 @@ msgstr "Quản lý chi phí"
 #. module: hr_expense
 #: model_terms:ir.ui.view,arch_db:hr_expense.res_config_settings_view_form
 msgid "Expense Outstanding Account"
-msgstr ""
+msgstr "Tài khoản chưa thanh toán chi phí"
 
 #. module: hr_expense
 #: model:ir.model,name:hr_expense.model_hr_expense_refuse_wizard
@@ -1140,7 +1133,7 @@ msgstr "Email đến"
 #. module: hr_expense
 #: model:ir.model.fields,field_description:hr_expense.field_hr_expense__description
 msgid "Internal Notes"
-msgstr "Ghi chú Nội bộ"
+msgstr "Ghi chú nội bộ"
 
 #. module: hr_expense
 #. odoo-python
@@ -1633,7 +1626,7 @@ msgstr "Hóa đơn điện thoại, bưu phí, v.v."
 #: code:addons/hr_expense/models/hr_expense_sheet.py:0
 msgid ""
 "Please specify an expense journal in order to generate accounting entries."
-msgstr ""
+msgstr "Vui lòng chỉ định một sổ nhật ký chi phí để tạo các bút toán kế toán."
 
 #. module: hr_expense
 #. odoo-python
@@ -1914,12 +1907,6 @@ msgid "Show missing work email employees"
 msgstr "Hiển thị nhân viên thiếu email công việc"
 
 #. module: hr_expense
-#. odoo-python
-#: code:addons/hr_expense/models/hr_expense_sheet.py:0
-msgid "Specify expense journal to generate accounting entries."
-msgstr "Chỉ định sổ nhật ký chi phí để tạo các bút toán."
-
-#. module: hr_expense
 #: model:ir.model.fields,help:hr_expense.field_hr_expense__accounting_date
 #: model:ir.model.fields,help:hr_expense.field_hr_expense_sheet__accounting_date
 msgid "Specify the bill date of the related vendor bill."
@@ -2063,13 +2050,8 @@ msgstr "Người phê duyệt nhóm"
 msgid ""
 "The account used to record the outstanding amount of the company expenses."
 msgstr ""
-
-#. module: hr_expense
-msgid ""
-"The account used to record the outstanding amount of the employee expenses."
-msgstr ""
-"Tài khoản được sử dụng để ghi nhận số tiền chưa thanh toán của chi phí nhân "
-"viên."
+"Tài khoản được sử dụng để ghi nhận số tiền chưa thanh toán của chi phí công "
+"ty."
 
 #. module: hr_expense
 #: model:ir.model.fields,help:hr_expense.field_res_company__expense_journal_id
@@ -2115,16 +2097,6 @@ msgstr "Sổ nhật ký phải được cài trong chi phí được vào sổ"
 #: model:ir.model.fields,help:hr_expense.field_hr_expense_sheet__employee_journal_id
 msgid "The journal used when the expense is paid by employee."
 msgstr "Sổ nhật ký được sử dụng khi chi phí được nhân viên thanh toán."
-
-#. module: hr_expense
-#. odoo-python
-#: code:addons/hr_expense/models/hr_expense_sheet.py:0
-msgid ""
-"The payment method %(method)s needs an account, or a default outstanding "
-"account must be defined in the settings."
-msgstr ""
-"Phương thức thanh toán %(method)s cần có tài khoản hoặc phải xác định một "
-"tài khoản chưa thanh toán mặc định trong phần cài đặt."
 
 #. module: hr_expense
 #: model:ir.model.fields,help:hr_expense.field_hr_expense_sheet__payment_method_line_id

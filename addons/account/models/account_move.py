@@ -71,6 +71,9 @@ ALLOWED_MIMETYPES = {
     'application/vnd.oasis.opendocument.spreadsheet',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.oasis.opendocument.presentation',
 }
 
 EMPTY = object()
@@ -116,6 +119,7 @@ class AccountMove(models.Model):
         tracking=True,
         index='trigram',
     )
+    name_placeholder = fields.Char(compute='_compute_name_placeholder')
     ref = fields.Char(
         string='Reference',
         copy=False,
@@ -872,26 +876,25 @@ class AccountMove(models.Model):
                 continue
 
             move_has_name = move.name and move.name != '/'
-            if move_has_name or move.state != 'posted':
-                if not move.posted_before and not move._sequence_matches_date():
-                    if move._get_last_sequence():
-                        # The name does not match the date and the move is not the first in the period:
-                        # Reset to draft
-                        move.name = False
-                        continue
-                else:
-                    if move_has_name and move.posted_before or not move_has_name and move._get_last_sequence():
-                        # The move either
-                        # - has a name and was posted before, or
-                        # - doesn't have a name, but is not the first in the period
-                        # so we don't recompute the name
-                        continue
-            if move.date and (not move_has_name or not move._sequence_matches_date()):
+            if not move.posted_before and not move._sequence_matches_date():
+                # The name does not match the date and the move is not the first in the period:
+                # Reset to draft
+                move.name = False
+                continue
+            if move.date and not move_has_name and move.state != 'draft':
                 move._set_next_sequence()
 
-        self.filtered(lambda m: not m.name and not move.quick_edit_mode).name = '/'
         self._inverse_name()
 
+    @api.depends('date', 'journal_id', 'move_type', 'name', 'posted_before', 'sequence_number', 'sequence_prefix', 'state')
+    def _compute_name_placeholder(self):
+        for move in self:
+            if (not move.name or move.name == '/') and not move._get_last_sequence():
+                sequence_format_string, sequence_format_values = move._get_sequence_format_param(move._get_starting_sequence())
+                sequence_format_values['seq'] = sequence_format_values['seq'] + 1
+                move.name_placeholder = sequence_format_string.format(**sequence_format_values)
+            else:
+                move.name_placeholder = False
 
     @api.depends('journal_id', 'date')
     def _compute_highest_name(self):
@@ -2279,7 +2282,7 @@ class AccountMove(models.Model):
     @api.onchange('journal_id')
     def _onchange_journal_id(self):
         if not self.quick_edit_mode:
-            self.name = '/'
+            self.name = False
             self._compute_name()
 
     @api.onchange('invoice_cash_rounding_id')
@@ -3335,6 +3338,16 @@ class AccountMove(models.Model):
             fields_spec = {key: val for key, val in fields_spec.items() if key != 'line_ids'}
         return super().onchange(values, field_names, fields_spec)
 
+    @api.model
+    def _get_view(self, view_id=None, view_type='form', **options):
+        arch, view = super()._get_view(view_id, view_type, **options)
+        if view_type == 'form':
+            if name_node := arch.xpath("""//field[@name="name"][@invisible="name == '/' and not posted_before and not quick_edit_mode"]"""):
+                name_node[0].set('invisible', "not (name or name_placeholder or quick_edit_mode)")
+            if draft_node := arch.xpath("""//span[@invisible="name == '/' and not posted_before and not quick_edit_mode"]"""):
+                draft_node[0].set('invisible', "name or name_placeholder or quick_edit_mode")
+        return arch, view
+
     # -------------------------------------------------------------------------
     # RECONCILIATION METHODS
     # -------------------------------------------------------------------------
@@ -3687,7 +3700,12 @@ class AccountMove(models.Model):
             price_untaxed = self.currency_id.round(
                 remaining_amount / (((1.0 - discount_percentage / 100.0) * (taxes.amount / 100.0)) + 1.0))
         else:
-            price_untaxed = taxes.with_context(force_price_include=True).compute_all(remaining_amount)['total_excluded']
+            tax_results = taxes.with_context(force_price_include=True).compute_all(remaining_amount)
+            price_untaxed = tax_results['total_excluded'] - sum(
+                tax_data['amount']
+                for tax_data in tax_results['taxes']
+                if tax_data['is_reverse_charge']
+            )
         return {'account_id': account_id, 'tax_ids': taxes.ids, 'price_unit': price_untaxed}
 
     @api.onchange('quick_edit_mode', 'journal_id', 'company_id')
@@ -3894,9 +3912,9 @@ class AccountMove(models.Model):
                     force_hash=force_hash, include_pre_last_hash=include_pre_last_hash, early_stop=early_stop
                 )
 
-                if chain_info is False:
+                if not chain_info:
                     continue
-                if early_stop and chain_info:
+                if early_stop:
                     return True
 
                 if 'unreconciled' in chain_info['warnings']:
@@ -4060,6 +4078,11 @@ class AccountMove(models.Model):
                     attachments_by_invoice[attachment] |= invoice
                 else:
                     attachments_by_invoice[attachment] = invoice
+                if not attachment.res_id:
+                    attachment.write({
+                        'res_id': invoice.id,
+                        'res_model': invoice._name,
+                    })
 
         file_data_list = attachments._unwrap_edi_attachments()
         attachments_by_invoice = {}
@@ -5064,8 +5087,6 @@ class AccountMove(models.Model):
         return self.action_force_register_payment()
 
     def action_force_register_payment(self):
-        if any(m.payment_state not in ('not_paid', 'partial', 'in_payment') for m in self):
-            raise UserError(_("You can only register payments for (partially) unpaid documents."))
         if any(m.move_type == 'entry' for m in self):
             raise UserError(_("You cannot register payments for miscellaneous entries."))
         return self.line_ids.action_register_payment()
@@ -5184,7 +5205,7 @@ class AccountMove(models.Model):
 
         self._check_draftable()
         # We remove all the analytics entries for this journal
-        self.mapped('line_ids.analytic_line_ids').with_context(force_analytic_line_delete=True).unlink()
+        self.mapped('line_ids.analytic_line_ids').unlink()
         self.mapped('line_ids').remove_move_reconcile()
         self.state = 'draft'
 
@@ -5988,8 +6009,9 @@ class AccountMove(models.Model):
         attachments_in_invoices = self.env['ir.attachment']
         for attachment in move_per_decodable_attachment:
             attachments_in_invoices += attachment
-        # Unlink the unused attachments
-        (attachments - attachments_in_invoices).unlink()
+        # Unlink the unused attachments (prevents storing marketing images sent with emails)
+        if self._context.get('from_alias'):
+            (attachments - attachments_in_invoices).unlink()
         return move_per_decodable_attachment
 
     def _creation_subtype(self):
@@ -6130,6 +6152,19 @@ class AccountMove(models.Model):
         Down-payments can be created from a sale order. This method is overridden in the sale order module.
         '''
         return False
+
+    def _refunds_origin_required(self):
+        return False
+
+    def _set_reversed_entry(self, credit_note):
+        """ Try to find the original invoice for a single credit_note. """
+        if len(credit_note) != 1 or credit_note.move_type != 'out_refund':
+            return
+
+        original_invoice = self.filtered(lambda inv: inv.move_type == 'out_invoice'
+                                         and credit_note.invoice_line_ids.sale_line_ids in inv.invoice_line_ids.sale_line_ids)
+        if len(original_invoice) == 1 and original_invoice._refunds_origin_required():
+            credit_note.reversed_entry_id = original_invoice.id
 
     @api.model
     def get_invoice_localisation_fields_required_to_invoice(self, country_id):

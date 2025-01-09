@@ -535,6 +535,7 @@ class Channel(models.Model):
                 SELECT DISTINCT ON (partner.id) partner.id,
                        partner.lang,
                        partner.partner_share,
+                       users.id as uid,
                        COALESCE(users.notification_type, 'email') as notif,
                        COALESCE(users.share, FALSE) as ushare
                   FROM res_partner partner
@@ -546,7 +547,7 @@ class Channel(models.Model):
                 sql_query,
                 (email_from or '', list(pids), [author_id] if author_id else [], )
             )
-            for partner_id, lang, partner_share, notif, ushare in self._cr.fetchall():
+            for partner_id, lang, partner_share, uid, notif, ushare in self._cr.fetchall():
                 # ocn_client: will add partners to recipient recipient_data. more ocn notifications. We neeed to filter them maybe
                 recipients_data.append({
                     'active': True,
@@ -557,7 +558,7 @@ class Channel(models.Model):
                     'notif': notif,
                     'share': partner_share,
                     'type': 'user' if not partner_share and notif else 'customer',
-                    'uid': False,
+                    'uid': uid,
                     'ushare': ushare,
                 })
 
@@ -620,12 +621,17 @@ class Channel(models.Model):
                 groups[index] = (group_name, lambda partner: False, group_data)
         return groups
 
+    def _get_notify_valid_parameters(self):
+        return super()._get_notify_valid_parameters() | {"silent"}
+
     def _notify_thread(self, message, msg_vals=False, **kwargs):
         # link message to channel
         rdata = super()._notify_thread(message, msg_vals=msg_vals, **kwargs)
         payload = {"data": Store(message).get_result(), "id": self.id}
         if temporary_id := self.env.context.get("temporary_id"):
             payload["temporary_id"] = temporary_id
+        if kwargs.get("silent"):
+            payload["silent"] = True
         self._bus_send_store(self, {"is_pinned": True}, subchannel="members")
         self._bus_send("discuss.channel/new_message", payload)
         return rdata
@@ -705,9 +711,9 @@ class Channel(models.Model):
         """
         Automatically set the message posted by the current user as seen for themselves.
         """
-        if current_channel_member := self.env["discuss.channel.member"].search([
+        if (current_channel_member := self.env["discuss.channel.member"].search([
             ("channel_id", "=", self.id), ("is_self", "=", True)
-        ]):
+        ])) and message.is_current_user_or_guest_author:
             current_channel_member._set_last_seen_message(message, notify=False)
             current_channel_member._set_new_message_separator(message.id + 1, sync=True)
         return super()._message_post_after_hook(message, msg_vals)
@@ -1001,7 +1007,7 @@ class Channel(models.Model):
             # get the existing channel between the given partners
             channel = self.browse(result[0].get('channel_id'))
             # pin or open the channel for the current partner
-            if pin or open:
+            if pin or force_open:
                 member = self.env['discuss.channel.member'].search([('partner_id', '=', self.env.user.partner_id.id), ('channel_id', '=', channel.id)])
                 vals = {'last_interest_dt': fields.Datetime.now()}
                 if pin:

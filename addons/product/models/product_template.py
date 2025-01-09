@@ -119,9 +119,11 @@ class ProductTemplate(models.Model):
         default=_get_default_uom_id, required=True,
         help="Default unit of measure used for all stock operations.")
     uom_name = fields.Char(string='Unit of Measure Name', related='uom_id.name', readonly=True)
+    uom_category_id = fields.Many2one('uom.category', string='UoM Category', related="uom_id.category_id")
     uom_po_id = fields.Many2one(
         'uom.uom', 'Purchase Unit',
         compute='_compute_uom_po_id', required=True, readonly=False, store=True, precompute=True,
+        domain="[('category_id', '=', uom_category_id)]",
         help="Default unit of measure used for purchase orders. It must be in the same category as the default unit of measure.")
     company_id = fields.Many2one(
         'res.company', 'Company', index=True)
@@ -211,7 +213,7 @@ class ProductTemplate(models.Model):
 
     @api.depends('image_1920', 'image_1024')
     def _compute_can_image_1024_be_zoomed(self):
-        for template in self:
+        for template in self.with_context(bin_size=False):
             template.can_image_1024_be_zoomed = template.image_1920 and is_image_size_above(template.image_1920, template.image_1024)
 
     @api.depends(
@@ -231,9 +233,7 @@ class ProductTemplate(models.Model):
         for product in self:
             product.has_configurable_attributes = (
                 product.has_dynamic_attributes() or any(
-                    ptal.attribute_id.display_type == 'multi'
-                    or len(ptal.value_ids) >= 2
-                    or ptal.value_ids.is_custom
+                    ptal._is_configurable()
                     for ptal in product.attribute_line_ids
                 )
             )
@@ -473,7 +473,14 @@ class ProductTemplate(models.Model):
     def _onchange_type(self):
         if self.type == 'combo':
             if self.attribute_line_ids:
-                raise UserError(_("Combo products can't have attributes"))
+                raise UserError(_("Combo products can't have attributes."))
+            combo_items = self.env['product.combo.item'].sudo().search([
+                ('product_id', 'in', self.product_variant_ids.ids)
+            ])
+            if combo_items:
+                raise UserError(_(
+                    "This product is part of a combo, so its type can't be changed to \"combo\"."
+                ))
             self.purchase_ok = False
         return {}
 

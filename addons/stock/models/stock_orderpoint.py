@@ -13,6 +13,7 @@ from odoo.addons.stock.models.stock_rule import ProcurementException
 from odoo.exceptions import RedirectWarning, UserError, ValidationError
 from odoo.modules.registry import Registry
 from odoo.osv import expression
+from odoo.sql_db import BaseCursor
 from odoo.tools import float_compare, float_is_zero, frozendict, split_every, format_date
 
 _logger = logging.getLogger(__name__)
@@ -353,6 +354,8 @@ class StockWarehouseOrderpoint(models.Model):
 
     def _get_qty_to_order(self, force_visibility_days=False, qty_in_progress_by_orderpoint={}):
         self.ensure_one()
+        if not self.product_id or not self.location_id:
+            return False
         visibility_days = self.visibility_days
         if force_visibility_days is not False:
             # Accepts falsy values such as 0.
@@ -630,6 +633,7 @@ class StockWarehouseOrderpoint(models.Model):
 
         for orderpoints_batch_ids in split_every(1000, self.ids):
             if use_new_cursor:
+                assert isinstance(self._cr, BaseCursor)
                 cr = Registry(self._cr.dbname).cursor()
                 self = self.with_env(self.env(cr=cr))
             try:

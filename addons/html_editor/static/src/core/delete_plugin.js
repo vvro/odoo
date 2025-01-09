@@ -58,7 +58,7 @@ import { withSequence } from "@html_editor/utils/resource";
  */
 
 export class DeletePlugin extends Plugin {
-    static dependencies = ["selection", "history"];
+    static dependencies = ["selection", "history", "input"];
     static id = "delete";
     static shared = ["deleteRange", "deleteSelection", "delete"];
     resources = {
@@ -187,6 +187,7 @@ export class DeletePlugin extends Plugin {
             this.includeEndOrStartBlock,
         ]);
         range = this.deleteRange(range);
+        this.document.getSelection()?.removeAllRanges();
         this.setCursorFromRange(range, { collapseToEnd: true });
     }
 
@@ -1025,9 +1026,7 @@ export class DeletePlugin extends Plugin {
 
         // If not preceded by content, it is invisible.
         if (offset) {
-            if (isWhitespace(textNode.textContent[offset - char.length])) {
-                return false;
-            }
+            return !isWhitespace(textNode.textContent[offset - char.length]);
         } else if (!(getState(...leftPos(textNode), DIRECTIONS.LEFT).cType & CTYPES.CONTENT)) {
             return false;
         }
@@ -1152,9 +1151,9 @@ export class DeletePlugin extends Plugin {
 
     onBeforeInputInsertText(ev) {
         if (ev.inputType === "insertText") {
-            const selection = this.dependencies.selection.getEditableSelection();
+            const selection = this.dependencies.selection.getSelectionData().deepEditableSelection;
             if (!selection.isCollapsed) {
-                this.deleteSelection();
+                this.deleteSelection(selection);
             }
             // Default behavior: insert text and trigger input event
         }

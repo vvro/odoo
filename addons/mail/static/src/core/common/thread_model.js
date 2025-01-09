@@ -657,12 +657,12 @@ export class Thread extends Record {
         try {
             const { data, messages } = await this.fetchMessagesData({ after, around, before });
             this.store.insert(data, { html: true });
-            this.isLoaded = true;
             return this.store.Message.insert(messages.reverse());
         } catch (e) {
             this.hasLoadingFailed = true;
             throw e;
         } finally {
+            this.isLoaded = true;
             this.status = "ready";
         }
     }
@@ -931,6 +931,8 @@ export class Thread extends Record {
         this.store.chatHub.opened.unshift(cw);
         if (!isMobileOS()) {
             cw.focus();
+        } else {
+            this.markAsRead();
         }
         this.state = "open";
         cw.notifyState();

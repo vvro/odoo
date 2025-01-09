@@ -143,7 +143,7 @@ class AccountAccount(models.Model):
 
     def _field_to_sql(self, alias: str, fname: str, query: (Query | None) = None, flush: bool = True) -> SQL:
         if fname == 'internal_group':
-            return SQL("split_part(account_account.account_type, '_', 1)", to_flush=self._fields['account_type'])
+            return SQL("split_part(%s, '_', 1)", self._field_to_sql(alias, 'account_type', query, flush))
         if fname == 'code':
             return self.with_company(self.env.company.root_id).sudo()._field_to_sql(alias, 'code_store', query, flush)
         if fname == 'placeholder_code':
@@ -1438,7 +1438,7 @@ class AccountGroup(models.Model):
     name = fields.Char(required=True, translate=True)
     code_prefix_start = fields.Char(compute='_compute_code_prefix_start', readonly=False, store=True, precompute=True)
     code_prefix_end = fields.Char(compute='_compute_code_prefix_end', readonly=False, store=True, precompute=True)
-    company_id = fields.Many2one('res.company', required=True, readonly=True, default=lambda self: self.env.company)
+    company_id = fields.Many2one('res.company', required=True, readonly=True, default=lambda self: self.env.company.root_id)
 
     _sql_constraints = [
         (

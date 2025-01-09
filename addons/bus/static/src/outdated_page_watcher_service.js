@@ -21,18 +21,17 @@ export class OutdatedPageWatcherService {
         this.nextAutovacuumDt = vacuumInfo ? deserializeDateTime(vacuumInfo.nextcall) : null;
         this.lastDisconnectDt = null;
         this.closeNotificationFn;
-        bus_service.addEventListener(
-            "disconnect",
-            () => (this.lastDisconnectDt = DateTime.now().toUTC())
-        );
+        bus_service.addEventListener("disconnect", () => (this.lastDisconnectDt = DateTime.now()));
         bus_service.addEventListener("reconnect", async () => {
             if (!multi_tab.isOnMainTab() || !this.lastDisconnectDt) {
                 return;
             }
-            if (!this.lastAutovacuumDt || DateTime.now().toUTC() >= this.nextAutovacuumDt) {
-                const { lastcall, nextcall } = await rpc("/bus/get_autovacuum_info", {
-                    silent: true,
-                });
+            if (!this.lastAutovacuumDt || DateTime.now() >= this.nextAutovacuumDt) {
+                const { lastcall, nextcall } = await rpc(
+                    "/bus/get_autovacuum_info",
+                    {},
+                    { silent: true }
+                );
                 this.lastAutovacuumDt = deserializeDateTime(lastcall);
                 this.nextAutovacuumDt = deserializeDateTime(nextcall);
                 multi_tab.setSharedValue("bus.autovacuum_info", { lastcall, nextcall });

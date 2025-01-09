@@ -6,6 +6,7 @@ import { ChatGPTAlternativesDialog } from "./chatgpt_alternatives_dialog";
 import { ChatGPTTranslateDialog } from "./chatgpt_translate_dialog";
 import { LanguageSelector } from "./language_selector";
 import { withSequence } from "@html_editor/utils/resource";
+import { user } from "@web/core/user";
 
 export class ChatGPTPlugin extends Plugin {
     static id = "chatgpt";
@@ -29,11 +30,15 @@ export class ChatGPTPlugin extends Plugin {
                 groupId: "ai",
                 title: _t("Translate with AI"),
                 isAvailable: (selection) => {
-                    return !selection.isCollapsed;
+                    return !selection.isCollapsed && user.userId;
                 },
                 Component: LanguageSelector,
                 props: {
                     onSelected: (language) => this.openDialog({ language }),
+                    isDisabled: () => {
+                        const sel = this.document.getSelection();
+                        return !sel.toString().replace(/\s+/g, "");
+                    },
                 },
             },
             {
@@ -41,6 +46,7 @@ export class ChatGPTPlugin extends Plugin {
                 groupId: "ai",
                 commandId: "openChatGPTDialog",
                 text: "AI",
+                isDisabled: (sel) => !sel.textContent().replace(/\s+/g, ""),
             },
         ],
 

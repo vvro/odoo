@@ -381,7 +381,7 @@ test("statusbar: choose an item from the folded menu", async () => {
         `,
     });
 
-    expect("[aria-label='Current state']").toHaveText("aaa", {
+    expect("[aria-checked='true']").toHaveText("aaa", {
         message: "default status is 'aaa'",
     });
 
@@ -394,7 +394,7 @@ test("statusbar: choose an item from the folded menu", async () => {
     await click(".o-dropdown--menu .dropdown-item");
     await animationFrame();
 
-    expect("[aria-label='Current state']").toHaveText("second record", {
+    expect("[aria-checked='true']").toHaveText("second record", {
         message: "status has changed to the selected dropdown item",
     });
 });
@@ -714,7 +714,8 @@ test("last status bar button have a border radius (no arrow shape) on the right 
     expect(".o_statusbar_status button[data-value='3']").toHaveClass("o_first");
 });
 
-test.tags("desktop")("correctly load statusbar when dynamic domain changes", async () => {
+test.tags("desktop");
+test("correctly load statusbar when dynamic domain changes", async () => {
     class Stage extends models.Model {
         name = fields.Char();
         folded = fields.Boolean({ default: false });

@@ -549,6 +549,7 @@ class SaleOrderLine(models.Model):
                 or (line.product_id.expense_policy == 'cost' and line.is_expense)
             ):
                 continue
+            line = line.with_context(sale_write_from_compute=True)
             if not line.product_uom or not line.product_id:
                 line.price_unit = 0.0
                 line.technical_price_unit = 0.0
@@ -762,8 +763,8 @@ class SaleOrderLine(models.Model):
         for line in self:
             base_line = line._prepare_base_line_for_taxes_computation()
             self.env['account.tax']._add_tax_details_in_base_line(base_line, line.company_id)
-            line.price_subtotal = base_line['tax_details']['total_excluded_currency']
-            line.price_total = base_line['tax_details']['total_included_currency']
+            line.price_subtotal = base_line['tax_details']['raw_total_excluded_currency']
+            line.price_total = base_line['tax_details']['raw_total_included_currency']
             line.price_tax = line.price_total - line.price_subtotal
 
     @api.depends('price_subtotal', 'product_uom_qty')
@@ -914,7 +915,7 @@ class SaleOrderLine(models.Model):
         for line in self:
             qty_invoiced_posted = 0.0
             for invoice_line in line._get_invoice_lines():
-                if invoice_line.move_id.state == 'posted':
+                if invoice_line.move_id.state == 'posted' or invoice_line.move_id.payment_state == 'invoicing_legacy':
                     qty_unsigned = invoice_line.product_uom_id._compute_quantity(invoice_line.quantity, line.product_uom)
                     qty_signed = qty_unsigned * -invoice_line.move_id.direction_sign
                     qty_invoiced_posted += qty_signed
@@ -998,7 +999,7 @@ class SaleOrderLine(models.Model):
         for line in self:
             amount_invoiced = 0.0
             for invoice_line in line._get_invoice_lines():
-                if invoice_line.move_id.state == 'posted':
+                if invoice_line.move_id.state == 'posted' or invoice_line.move_id.payment_state == 'invoicing_legacy':
                     invoice_date = invoice_line.move_id.invoice_date or fields.Date.today()
                     if invoice_line.move_id.move_type == 'out_invoice':
                         amount_invoiced += invoice_line.currency_id._convert(invoice_line.price_subtotal, line.currency_id, line.company_id, invoice_date)
@@ -1012,7 +1013,7 @@ class SaleOrderLine(models.Model):
             amount_invoiced = 0.0
             for invoice_line in line._get_invoice_lines():
                 invoice = invoice_line.move_id
-                if invoice.state == 'posted':
+                if invoice.state == 'posted' or invoice_line.move_id.payment_state == 'invoicing_legacy':
                     invoice_date = invoice.invoice_date or fields.Date.context_today(self)
                     amount_invoiced_unsigned = invoice_line.currency_id._convert(invoice_line.price_total, line.currency_id, line.company_id, invoice_date)
                     amount_invoiced += amount_invoiced_unsigned * -invoice.direction_sign
@@ -1177,6 +1178,12 @@ class SaleOrderLine(models.Model):
             if vals.get('display_type') or self.default_get(['display_type']).get('display_type'):
                 vals['product_uom_qty'] = 0.0
 
+            if 'technical_price_unit' in vals and 'price_unit' not in vals:
+                # price_unit field was set as readonly in the view (but technical_price_unit not)
+                # the field is not sent by the client and expected to be recomputed, but isn't
+                # because technical_price_unit is set.
+                vals.pop('technical_price_unit')
+
         lines = super().create(vals_list)
         for line in lines:
             linked_line = line._get_linked_line()
@@ -1206,6 +1213,16 @@ class SaleOrderLine(models.Model):
             precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
             self.filtered(
                 lambda r: r.state == 'sale' and float_compare(r.product_uom_qty, values['product_uom_qty'], precision_digits=precision) != 0)._update_line_quantity(values)
+
+        if (
+            'technical_price_unit' in values
+            and 'price_unit' not in values
+            and not self.env.context.get('sale_write_from_compute')
+        ):
+            # price_unit field was set as readonly in the view (but technical_price_unit not)
+            # the field is not sent by the client and expected to be recomputed, but isn't
+            # because technical_price_unit is set.
+            values.pop('technical_price_unit')
 
         # Prevent writing on a locked SO.
         protected_fields = self._get_protected_fields()
@@ -1379,7 +1396,7 @@ class SaleOrderLine(models.Model):
 
     def _get_partner_display(self):
         self.ensure_one()
-        commercial_partner = self.order_partner_id.commercial_partner_id
+        commercial_partner = self.sudo().order_partner_id.commercial_partner_id
         return f'({commercial_partner.ref or commercial_partner.name})'
 
     def _additional_name_per_id(self):

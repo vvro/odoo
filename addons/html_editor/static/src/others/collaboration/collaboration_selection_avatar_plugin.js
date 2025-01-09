@@ -19,7 +19,7 @@ import { user } from "@web/core/user";
 export const AVATAR_SIZE = 25;
 
 export class CollaborationSelectionAvatarPlugin extends Plugin {
-    static id = "collaboration_selection_avatar";
+    static id = "collaborationSelectionAvatar";
     static dependencies = ["history", "position", "localOverlay", "collaborationOdoo"];
     resources = {
         /** Handlers */
@@ -76,7 +76,7 @@ export class CollaborationSelectionAvatarPlugin extends Plugin {
         const { avatarUrl, peerName = _t("Anonymous") } = peerMetadata;
         const anchorNode = this.dependencies.history.getNodeById(selection.anchorNodeId);
         const focusNode = this.dependencies.history.getNodeById(selection.focusNodeId);
-        if (!anchorNode || !focusNode) {
+        if (!anchorNode || !focusNode || !anchorNode.isConnected || !focusNode.isConnected) {
             return;
         }
         const anchorBlock = closestBlock(anchorNode);
@@ -153,17 +153,17 @@ export class CollaborationSelectionAvatarPlugin extends Plugin {
         this.enableAvatars();
         for (const info of this.selectionInfos.values()) {
             if (info.avatarTargetElement === element) {
-                if (!info.avatarElement.classList.contains("opacity-0")) {
-                    info.avatarElement.classList.add("opacity-0");
+                if (!info.avatarElement.classList.contains("invisible")) {
+                    info.avatarElement.classList.add("invisible");
                 }
             }
         }
     }
     enableAvatars() {
         for (const element of this.avatarOverlay.querySelectorAll(
-            ".oe-collaboration-caret-avatar.opacity-0"
+            ".oe-collaboration-caret-avatar.invisible"
         )) {
-            element.classList.remove("opacity-0");
+            element.classList.remove("invisible");
         }
     }
 }

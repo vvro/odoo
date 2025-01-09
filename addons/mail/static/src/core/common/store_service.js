@@ -10,6 +10,7 @@ import { debounce } from "@web/core/utils/timing";
 import { session } from "@web/session";
 import { _t } from "@web/core/l10n/translation";
 import { cleanTerm, prettifyMessageContent } from "@mail/utils/common/format";
+import { browser } from "@web/core/browser/browser";
 
 /**
  * @typedef {{isSpecial: boolean, channel_types: string[], label: string, displayName: string, description: string}} SpecialMention
@@ -102,8 +103,6 @@ export class Store extends BaseStore {
      */
     inPublicPage = false;
     odoobot = Record.one("Persona");
-    /** @type {boolean} */
-    odoobotOnboarding;
     users = {};
     /** @type {number} */
     internalUserGroupId;
@@ -151,6 +150,26 @@ export class Store extends BaseStore {
         };
     }
 
+    isNotificationPermissionDismissed = Record.attr(false, {
+        compute() {
+            return (
+                browser.localStorage.getItem("mail.user_setting.push_notification_dismissed") ===
+                "true"
+            );
+        },
+        /** @this {import("models").DiscussApp} */
+        onUpdate() {
+            if (this.isNotificationPermissionDismissed) {
+                browser.localStorage.setItem(
+                    "mail.user_setting.push_notification_dismissed",
+                    "true"
+                );
+            } else {
+                browser.localStorage.removeItem("mail.user_setting.push_notification_dismissed");
+            }
+        },
+    });
+
     messagePostMutex = new Mutex();
 
     menuThreads = Record.many("Thread", {
@@ -187,18 +206,9 @@ export class Store extends BaseStore {
              * - threads with needaction
              * - unread channels
              * - read channels
-             * - odoobot chat
              *
              * In each group, thread with most recent message comes first
              */
-            const aOdooBot = a.isCorrespondentOdooBot;
-            const bOdooBot = b.isCorrespondentOdooBot;
-            if (aOdooBot && !bOdooBot) {
-                return 1;
-            }
-            if (bOdooBot && !aOdooBot) {
-                return -1;
-            }
             const aNeedaction = a.needactionMessages.length;
             const bNeedaction = b.needactionMessages.length;
             if (aNeedaction > 0 && bNeedaction === 0) {
@@ -268,7 +278,7 @@ export class Store extends BaseStore {
 
     /** Import data received from init_messaging */
     async initialize() {
-        await this.fetchData(this.initMessagingParams, { readonly: false });
+        await this.fetchData(this.initMessagingParams);
         this.isReady.resolve();
     }
 
@@ -506,8 +516,14 @@ export class Store extends BaseStore {
      * Get the parameters to pass to the message post route.
      */
     async getMessagePostParams({ body, postData, thread }) {
-        const { attachments, cannedResponseIds, isNote, mentionedChannels, mentionedPartners } =
-            postData;
+        const {
+            attachments,
+            cannedResponseIds,
+            emailAddSignature,
+            isNote,
+            mentionedChannels,
+            mentionedPartners,
+        } = postData;
         const subtype = isNote ? "mail.mt_note" : "mail.mt_comment";
         const validMentions = this.getMentionsFromText(body, {
             mentionedChannels,
@@ -530,6 +546,7 @@ export class Store extends BaseStore {
         }
         postData = {
             body: await prettifyMessageContent(body, validMentions),
+            email_add_signature: emailAddSignature,
             message_type: "comment",
             subtype_xmlid: subtype,
         };

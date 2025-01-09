@@ -161,6 +161,7 @@ class AccountMove(models.Model):
                     'price_unit': -price_unit,
                     'amount_currency': amount_currency,
                     'account_id': credit_expense_account.id,
+                    'analytic_distribution': line.analytic_distribution,
                     'display_type': 'cogs',
                     'tax_ids': [],
                     'cogs_origin_id': line.id,
@@ -238,6 +239,7 @@ class AccountMove(models.Model):
                     else:
                         reconcile_plan += [product_account_moves]
         self.env['account.move.line']._reconcile_plan(reconcile_plan)
+        no_exchange_reconcile_plan = [amls.filtered(lambda aml: not aml.reconciled) for amls in no_exchange_reconcile_plan]
         self.env['account.move.line'].with_context(no_exchange_difference=True)._reconcile_plan(no_exchange_reconcile_plan)
 
     def _get_invoiced_lot_values(self):

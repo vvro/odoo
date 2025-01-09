@@ -17,6 +17,7 @@
 # Maria Boyadjieva <marabo2000@gmail.com>, 2024
 # Veselina Slavkova, 2024
 # Elena Varbanova, 2024
+# Margarita Katzeva, 2024
 # Petko Karamotchev, 2024
 # 
 msgid ""
@@ -456,7 +457,7 @@ msgstr ""
 #. odoo-javascript
 #: code:addons/html_editor/static/src/main/link/link_popover.xml:0
 msgid "Copy Link"
-msgstr ""
+msgstr "Копирайте линка"
 
 #. module: html_editor
 #. odoo-javascript
@@ -1420,7 +1421,7 @@ msgstr "Професионален"
 #. odoo-javascript
 #: code:addons/html_editor/static/src/main/media/media_dialog/upload_progress_toast/upload_progress_toast.xml:0
 msgid "Progress bar"
-msgstr ""
+msgstr "Лента за напредък"
 
 #. module: html_editor
 #. odoo-javascript
